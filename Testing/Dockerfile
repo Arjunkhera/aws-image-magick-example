@@ -38,13 +38,13 @@ ADD build /root/build
 RUN /root/build/build_libde265.sh
 
 # Build all the dependencies before libheif
-RUN /root/build/build_libbz2.sh
-RUN /root/build/build_libjpeg.sh
-RUN /root/build/build_libpng.sh
-RUN /root/build/build_libtiff.sh
-RUN /root/build/build_libwebp.sh
-RUN /root/build/build_libopenjp2.sh
-RUN /root/build/build_lcms.sh
+# RUN /root/build/build_libbz2.sh
+# RUN /root/build/build_libjpeg.sh
+# RUN /root/build/build_libpng.sh
+# RUN /root/build/build_libtiff.sh
+# RUN /root/build/build_libwebp.sh
+# RUN /root/build/build_libopenjp2.sh
+# RUN /root/build/build_lcms.sh
 
 # Now that CMake >= 3.16.3 is installed, build libheif with GCC 10
 RUN /root/build/build_libheif.sh
