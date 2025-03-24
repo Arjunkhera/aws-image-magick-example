@@ -2,20 +2,22 @@
 set -e
 
 cd /root
-curl https://github.com/strukturag/libheif/releases/download/v1.12.0/libheif-1.12.0.tar.gz -L -o tmp-libheif.tar.gz
+
+# Download and extract libheif
+curl -L https://github.com/strukturag/libheif/releases/download/v1.19.7/libheif-1.19.7.tar.gz -o tmp-libheif.tar.gz
 tar xf tmp-libheif.tar.gz
-cd libheif*
+cd libheif-1.19.7
 
-sh autogen.sh
+# Create a separate build directory
+mkdir build
+cd build
 
-PKG_CONFIG_PATH=/root/build/cache/lib/pkgconfig \
-  ./configure \
-    CPPFLAGS=-I/root/build/cache/include \
-    LDFLAGS=-L/root/build/cache/lib \
-    --disable-dependency-tracking \
-    --disable-shared \
-    --enable-static \
-    --prefix=/root/build/cache
+# Make sure pkg-config can find libraries in /root/build/cache/lib/pkgconfig
+export PKG_CONFIG_PATH="/root/build/cache/lib/pkgconfig:$PKG_CONFIG_PATH"
 
+# Configure with the release preset and set installation path
+cmake --preset=release -D CMAKE_INSTALL_PREFIX=/root/build/cache ..
+
+# Build and install
 make
 make install

@@ -2,7 +2,7 @@
 set -e
 
 cd /root
-curl http://download.osgeo.org/libtiff/tiff-4.3.0.tar.gz -L -o tmp-libtiff.tar.gz
+curl http://download.osgeo.org/libtiff/tiff-4.7.0.tar.gz -L -o tmp-libtiff.tar.gz
 tar xf tmp-libtiff.tar.gz
 cd tiff*
 

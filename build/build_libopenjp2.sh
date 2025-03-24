@@ -2,7 +2,7 @@
 set -e
 
 cd /root
-curl https://github.com/uclouvain/openjpeg/archive/v2.4.0.tar.gz -L -o tmp-libopenjp2.tar.gz
+curl https://github.com/uclouvain/openjpeg/archive/v2.5.3.tar.gz -L -o tmp-libopenjp2.tar.gz
 tar xf tmp-libopenjp2.tar.gz
 cd openjpeg*
 

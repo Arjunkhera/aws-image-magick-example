@@ -2,7 +2,7 @@
 set -e
 
 cd /root
-curl https://github.com/webmproject/libwebp/archive/v1.2.1.tar.gz -L -o tmp-libwebp.tar.gz
+curl https://github.com/webmproject/libwebp/archive/v1.5.0.tar.gz -L -o tmp-libwebp.tar.gz
 tar xf tmp-libwebp.tar.gz
 cd libwebp*
 

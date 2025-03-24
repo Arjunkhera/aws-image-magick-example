@@ -2,9 +2,11 @@
 set -e
 
 cd /root
-curl http://prdownloads.sourceforge.net/libpng/libpng-1.6.47.tar.xz -L -o tmp-libpng.tar.xz
-tar xf tmp-libpng.tar.xz
-cd libpng*
+curl https://github.com/strukturag/libheif/releases/download/v1.19.7/libheif-1.19.7.tar.gz -L -o tmp-libheif.tar.gz
+tar xf tmp-libheif.tar.gz
+cd libheif*
+
+sh autogen.sh
 
 PKG_CONFIG_PATH=/root/build/cache/lib/pkgconfig \
   ./configure \
