@@ -1,0 +1,11 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libheif
+Description: HEIF file format decoder and encoder
+Version: 1.18.0
+Requires:
+Libs: -L${libdir} -lheif
+Cflags: -I${includedir}

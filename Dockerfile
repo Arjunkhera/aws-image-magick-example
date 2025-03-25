@@ -1,33 +1,160 @@
 FROM amazonlinux:2
 
-# Install the system prerequisites needed to build and install packages
-RUN yum install -y \
-    gcc gcc-c++ cpp cpio make automake autoconf perl \
-    chkconfig clang clang-libs dos2unix zlib zlib-devel zip unzip tar \
-    libxml2 bzip2 bzip2-libs xz xz-libs pkgconfig libtool openssl-devel curl gzip
+# Install build dependencies
+RUN yum update -y && \
+    amazon-linux-extras install -y epel && \
+    yum install -y \
+    git \
+    cmake3 \
+    make \
+    pkgconfig \
+    libtool \
+    libtool-ltdl-devel \
+    nasm \
+    autoconf \
+    automake \
+    libjpeg-devel \
+    libpng-devel \
+    libtiff-devel \
+    jbigkit-devel \
+    zlib-devel \
+    bzip2-devel \
+    wget \
+    tar \
+    file \
+    ca-certificates \
+    gcc-c++ \
+    gcc && \
+    # Install additional compilation tools
+    yum groupinstall -y "Development Tools"
 
-# Remove any older cmake to avoid conflicts
-RUN yum remove -y cmake || true
+WORKDIR /build
 
-# Build and install a recent version of CMake (example: 3.22.0)
-RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.22.0/cmake-3.22.0.tar.gz -o /tmp/cmake.tar.gz \
-    && cd /tmp \
-    && tar xzf cmake.tar.gz \
-    && cd cmake-3.22.0 \
-    && ./bootstrap --prefix=/usr/local \
-    && make -j"$(nproc)" \
-    && make install
+# Install a newer version of gcc
+RUN wget http://ftp.gnu.org/gnu/gcc/gcc-11.3.0/gcc-11.3.0.tar.gz && \
+    tar xf gcc-11.3.0.tar.gz && \
+    cd gcc-11.3.0 && \
+    ./contrib/download_prerequisites && \
+    mkdir build && cd build && \
+    ../configure --prefix=/usr/local/gcc-11.3.0 --enable-languages=c,c++ --disable-multilib && \
+    make -j$(nproc) && \
+    make install && \
+    cd /build && \
+    rm -rf gcc-11.3.0 gcc-11.3.0.tar.gz
 
-# Confirm that "cmake" is the new version
-RUN cmake --version
+# Set up environment to use the newer gcc
+ENV PATH=/usr/local/gcc-11.3.0/bin:$PATH
+ENV LD_LIBRARY_PATH=/usr/local/gcc-11.3.0/lib64:$LD_LIBRARY_PATH
+ENV CC=/usr/local/gcc-11.3.0/bin/gcc
+ENV CXX=/usr/local/gcc-11.3.0/bin/g++
 
-ADD build /root/build
+# Install libwebp
+RUN wget https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.3.2.tar.gz && \
+    tar xf libwebp-1.3.2.tar.gz && \
+    cd libwebp-1.3.2 && \
+    ./configure --prefix=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig
 
-# Example: build libde265 first
-RUN /root/build/build_libde265.sh
+# Install zstd
+RUN wget https://github.com/facebook/zstd/releases/download/v1.5.5/zstd-1.5.5.tar.gz && \
+    tar xf zstd-1.5.5.tar.gz && \
+    cd zstd-1.5.5 && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig
 
-# Now that CMake >= 3.16.3 is installed, this should work
-RUN /root/build/build_libheif.sh
+# Install libde265
+RUN git clone --depth 1 https://github.com/strukturag/libde265.git && \
+    cd libde265 && \
+    ./autogen.sh && \
+    ./configure --prefix=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig
 
-# And so on...
-RUN /root/build/build_imagemagick.sh
+# Install x265
+RUN wget https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz && \
+    tar xf x265_3.5.tar.gz && \
+    cd x265_3.5/build/linux && \
+    cmake3 -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr/local ../../source && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig
+
+# Install AOM
+RUN wget https://storage.googleapis.com/aom-releases/libaom-3.7.1.tar.gz && \
+    tar xf libaom-3.7.1.tar.gz && \
+    mkdir -p libaom-3.7.1/build && \
+    cd libaom-3.7.1/build && \
+    cmake3 -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_SHARED_LIBS=1 -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTDATA=0 -DENABLE_TESTS=0 -DENABLE_TOOLS=0 .. && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig
+
+# Build libheif 1.19.7 with C++20 support
+RUN wget https://github.com/strukturag/libheif/releases/download/v1.19.7/libheif-1.19.7.tar.gz && \
+    tar xf libheif-1.19.7.tar.gz && \
+    cd libheif-1.19.7 && \
+    mkdir build && \
+    cd build && \
+    cmake3 -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_CXX_STANDARD=20 .. && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    cp /usr/local/lib64/libheif.so* /usr/lib64/ && \
+    ldconfig
+
+# Create pkg-config file for libheif
+RUN echo 'prefix=/usr/local' > /usr/local/lib64/pkgconfig/libheif.pc && \
+    echo 'exec_prefix=${prefix}' >> /usr/local/lib64/pkgconfig/libheif.pc && \
+    echo 'libdir=${exec_prefix}/lib64' >> /usr/local/lib64/pkgconfig/libheif.pc && \
+    echo 'includedir=${prefix}/include' >> /usr/local/lib64/pkgconfig/libheif.pc && \
+    echo '' >> /usr/local/lib64/pkgconfig/libheif.pc && \
+    echo 'Name: libheif' >> /usr/local/lib64/pkgconfig/libheif.pc && \
+    echo 'Description: HEIF file format decoder and encoder' >> /usr/local/lib64/pkgconfig/libheif.pc && \
+    echo 'Version: 1.19.7' >> /usr/local/lib64/pkgconfig/libheif.pc && \
+    echo 'Requires:' >> /usr/local/lib64/pkgconfig/libheif.pc && \
+    echo 'Libs: -L${libdir} -lheif' >> /usr/local/lib64/pkgconfig/libheif.pc && \
+    echo 'Cflags: -I${includedir}' >> /usr/local/lib64/pkgconfig/libheif.pc
+
+# Add library paths to system
+RUN echo "/usr/local/lib64" > /etc/ld.so.conf.d/local.conf && \
+    echo "/usr/local/lib" >> /etc/ld.so.conf.d/local.conf && \
+    echo "/usr/local/gcc-11.3.0/lib64" >> /etc/ld.so.conf.d/local.conf && \
+    ldconfig
+
+# Set environment variables for building ImageMagick
+ENV PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig
+ENV LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/local/gcc-11.3.0/lib64
+
+# Build ImageMagick with HEIF support
+RUN wget https://github.com/ImageMagick/ImageMagick/archive/refs/tags/7.1.1-31.tar.gz && \
+    tar xf 7.1.1-31.tar.gz && \
+    cd ImageMagick-7.1.1-31 && \
+    ./configure --with-heic=yes --with-webp --with-modules && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig
+
+# Test installations and make sure we copy all necessary binaries
+RUN cp -a /usr/local/bin/heif-* /usr/bin/ || echo "No heif binaries to copy" && \
+    ls -la /usr/local/lib64/libheif* && \
+    ldconfig
+
+# Cleanup
+RUN rm -rf /build/* && \
+    yum clean all
+
+# Create wrapper script that ensures proper library paths are set
+RUN echo '#!/bin/bash' > /usr/local/bin/entrypoint.sh && \
+    echo 'export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/local/gcc-11.3.0/lib64:$LD_LIBRARY_PATH' >> /usr/local/bin/entrypoint.sh && \
+    echo 'exec "$@"' >> /usr/local/bin/entrypoint.sh && \
+    chmod +x /usr/local/bin/entrypoint.sh
+
+WORKDIR /app
+
+# Use a proper entrypoint to ensure library paths are set
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["bash"]
